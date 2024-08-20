@@ -1,0 +1,80 @@
+Consolidated, slightly modified `makefile` patches from Debian;
+see: https://github.com/debian-calibre/unrar-nonfree
+
+diff --git a/unrar-nonfree-7.0.9/makefile b/unrar-nonfree-7.0.9/makefile
+index ce54a02..55fb1ad 100644
+--- makefile
++++ makefile
+@@ -3,14 +3,16 @@
+ 
+ # Linux using GCC
+ CXX=c++
+-CXXFLAGS=-march=native -O2 -std=c++11 -Wno-logical-op-parentheses -Wno-switch -Wno-dangling-else
+-LIBFLAGS=-fPIC
+-DEFINES=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DRAR_SMP
++CXXFLAGS+=-std=c++11 -Wno-logical-op-parentheses -Wno-switch -Wno-dangling-else
++LIBFLAGS+=-fPIC
++DEFINES+=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DRAR_SMP
+ STRIP=strip
+ AR=ar
+-LDFLAGS=-pthread
++LDFLAGS+=-pthread
+ DESTDIR=/usr
+ 
++SOVER=5
++
+ ##########################
+ 
+ COMPILE=$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEFINES)
+@@ -30,6 +32,9 @@ OBJECTS=rar.o strlist.o strfn.o pathfn.o smallfn.o global.o file.o filefn.o filc
+ .cpp.o:
+ 	$(COMPILE) -D$(WHAT) -c $<
+ 
++.PHONY: all install uninstall clean distclean sfx lib static-lib \
++	install-unrar uninstall-unrar install-lib uninstall-lib
++
+ all:	unrar
+ 
+ install:	install-unrar
+@@ -37,21 +42,21 @@ install:	install-unrar
+ uninstall:	uninstall-unrar
+ 
+ clean:
+-	@rm -f *.bak *~
+-	@rm -f $(OBJECTS) $(UNRAR_OBJ) $(LIB_OBJ)
+-	@rm -f unrar libunrar.*
++	rm -f *.bak *~
++	rm -f $(OBJECTS) $(UNRAR_OBJ) $(LIB_OBJ)
++	rm -f unrar libunrar.*
+ 
+ # We removed 'clean' from dependencies, because it prevented parallel
+ # 'make -Jn' builds.
+ 
+ unrar:	$(OBJECTS) $(UNRAR_OBJ)
+-	@rm -f unrar
++	rm -f unrar
+ 	$(LINK) -o unrar $(LDFLAGS) $(OBJECTS) $(UNRAR_OBJ) $(LIBS)	
+ 	$(STRIP) unrar
+ 
+ sfx:	WHAT=SFX_MODULE
+ sfx:	$(OBJECTS)
+-	@rm -f default.sfx
++	rm -f default.sfx
+ 	$(LINK) -o default.sfx $(LDFLAGS) $(OBJECTS)
+ 	$(STRIP) default.sfx
+ 
+@@ -59,7 +64,13 @@ lib:	WHAT=RARDLL
+ lib:	CXXFLAGS+=$(LIBFLAGS)
+ lib:	$(OBJECTS) $(LIB_OBJ)
+ 	@rm -f libunrar.*
+-	$(LINK) -shared -o libunrar.so $(LDFLAGS) $(OBJECTS) $(LIB_OBJ)
++	$(LINK) -Wl,-soname,libunrar.so.$(SOVER) -shared -o libunrar.so.$(SOVER).0 $(LDFLAGS) $(OBJECTS) $(LIB_OBJ)
++	ln -s libunrar.so.$(SOVER).0 libunrar.so.$(SOVER)
++	ln -s libunrar.so.$(SOVER)   libunrar.so
++
++static-lib: WHAT=RARDLL
++static-lib: $(OBJECTS) $(LIB_OBJ)
++	rm -f libunrar.a
+ 	$(AR) rcs libunrar.a $(OBJECTS) $(LIB_OBJ)
+ 
+ install-unrar:
